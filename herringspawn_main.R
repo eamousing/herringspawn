@@ -359,3 +359,120 @@ p3
 # Combine plots
 p0_2020 + p0_2021 + p0_2022 + p0_2023 + p1 + p2 + p3 + guide_area() + plot_layout(guides = "collect", ncol = 4) & plot_annotation(tag_levels = "a")
 ggsave("migration.tiff", scale = 1.1, dpi = 300, width = 9.5, height = 6, compression = "lzw")
+
+# write.csv2(sim5r, "mod_results_observed_2020.csv", row.names = F)
+# write.csv2(sim6r, "mod_results_observed_2021.csv", row.names = F)
+# write.csv2(sim7r, "mod_results_observed_2022.csv", row.names = F)
+# write.csv2(sim8r, "mod_results_observed_2023.csv", row.names = F)
+
+dist_obs <- data.frame(
+  year = c("2020", "2021", "2022", "2023"),
+  lon = c(her_cog$lon[dist5_2020+1], her_cog$lon[dist5_2021+1], her_cog$lon[dist5_2022+1], her_cog$lon[dist5_2023+1]),
+  lat = c(her_cog$lat[dist5_2020+1], her_cog$lat[dist5_2021+1], her_cog$lat[dist5_2022+1], her_cog$lat[dist5_2023+1])
+)
+
+# Read currents data for 2020
+require(R.matlab)
+
+# Read data from file
+jan_feb <- readMat(paste0(data_dir, "currents1993_2023jan_feb.mat"))
+uv_2020 <- data.frame(
+  lon = as.vector(jan_feb$xlon),
+  lat = as.vector(jan_feb$ylat),
+  u = as.vector(jan_feb$ueast[,,30]),
+  v = as.vector(jan_feb$vnorth[,,30])
+)
+uv_2020$w <- sqrt(uv_2020$v^2 + uv_2020$u^2)
+plot(uv_2020$w)
+
+
+head(uv_2020)
+
+p_dist <- ggplot() +
+  geom_map(data = world, map = world, aes(long, lat, map_id=region), fill = "lightgreen", color="darkgreen") +
+  geom_point(data = her_df, aes(x = lon, y = lat), col = "wheat", alpha = 0.1) +
+  geom_segment(
+    aes(x = her_cog$lon[1:14], 
+        y = her_cog$lat[1:14],
+        xend = her_cog$lon[2:15],
+        yend = her_cog$lat[2:15]),
+    arrow = arrow(length=unit(.3, 'cm'), type = "open"),
+    color = "darkblue") +
+  geom_point(aes(x = lon, y = lat), her_cog, color = "darkblue") +
+  geom_point(aes(x = lon, y = lat, col = as.factor(year)), dist_obs, shape = 16, size = 4, show.legend = FALSE) +
+  geom_point(aes(x = lon, y = lat), dist_obs, shape = 21, size = 4, show.legend = FALSE) +
+  geom_text(aes(x = lon, y = lat, label = as.factor(year)), dist_obs, hjust = 1.5, size = 4) +
+  scale_y_continuous(limits = c(62,71), expand = c(0, 0)) +
+  scale_x_continuous(limits = c(4,18), expand = c(0, 0)) +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  theme_bw() +
+  theme(axis.title.x=element_blank(), axis.title.y=element_blank())
+p_dist
+
+p_cur2020 <- ggplot() +
+  geom_map(data = world, map = world, aes(long, lat, map_id=region), fill = "lightgreen", color="darkgreen") +
+  geom_segment(data = uv_2020, aes(x = lon, xend = lon + u, y = lat, yend = lat + v, colour = w), 
+               arrow = arrow(angle = 15, length = unit(0.03, "inches"), type = "closed"), alpha = 0.3, show.legend = F) +
+  scale_color_gradient(low = "black", high = "red") +
+  geom_segment(
+    aes(x = her_cog$lon[1:14], 
+        y = her_cog$lat[1:14],
+        xend = her_cog$lon[2:15],
+        yend = her_cog$lat[2:15]),
+    arrow = arrow(length=unit(.3, 'cm'), type = "open"),
+    color = "darkblue") +
+  geom_point(aes(x = lon, y = lat), her_cog, color = "darkblue") +
+  scale_y_continuous(limits = c(62,71), expand = c(0, 0)) +
+  scale_x_continuous(limits = c(4,18), expand = c(0, 0)) +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  theme_bw() +
+  theme(axis.title.x=element_blank(), axis.title.y=element_blank())
+
+p_cur2020
+
+sim_obs <- rbind(sim5r, sim6r, sim7r, sim8r)
+sim_obs$energy_rel <- sim_obs$energy_rel*100
+
+p_cond_k <- ggplot(sim_obs, aes(x = trans)) +
+  geom_hline(yintercept = 0.65, linetype="dashed") +
+  scale_x_continuous(breaks=c(1:11), labels=c(1:11),limits=c(1,11)) +
+  geom_line(aes(y = cond_k, col = as.factor(year)), show.legend = F) +
+  xlab("Transect") +
+  ylab("CF after spawning") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+p_sspeed <- ggplot(sim_obs, aes(x = trans)) +
+  geom_line(aes(y = sspeed, col = as.factor(year)), show.legend = F) +
+  scale_x_continuous(breaks=c(1:11), labels=c(1:11),limits=c(1,11)) +
+  xlab("Transect") +
+  ylab("Swimming speed (bl/s)") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+p_wei <- ggplot(sim_obs, aes(x = trans)) +
+  geom_line(aes(y = wei, col = as.factor(year)), show.legend = F) +
+  scale_x_continuous(breaks=c(1:11), labels=c(1:11),limits=c(1,11)) +
+  xlab("Transect") +
+  ylab("Weight (g)") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+p_rel_energy <- ggplot(sim_obs, aes(x =trans)) +
+  geom_line(aes(y = energy_rel, col = as.factor(year)), show.legend = F) +
+  scale_x_continuous(breaks=c(1:11), labels=c(1:11),limits=c(1,11)) +
+  xlab("Transect") +
+  ylab("Energy use (%)") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+my_layout <- "
+ABCD
+ABEF
+"
+
+p_dist + p_cur2020 + p_wei + p_sspeed + p_cond_k + p_rel_energy + plot_layout(guides = "collect", design = my_layout) & plot_annotation(tag_levels = "a") & theme(legend.position = 'bottom', legend.title = element_blank())
