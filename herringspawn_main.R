@@ -1,16 +1,33 @@
+#!/usr/bin/env Rscript
 
+# Analysis script: Herring spawning migration and bioenergetics 2016 year-class
+#
+# Author: Erik Askov Mousing, IMR, erik.askov.mousing@hi.no
+# Date: 2023-10-20
+#
+# Data dependencies:
+#
+# Output:
+#   The script returns the results from the migration/bioenergetics model
+#   as csv-files per year and a single plot.
+#
+# To run the script from the terminal on UNIX/Linux:
+#
+#   > Rscript herringspawn_main.R
 
-#### Setup environment and prepare simulations ####
-
-# Define output mode
-file_out <- TRUE # Write model output to files
-fig_out <- TRUE # Write model plots
-
-# Setup directory paths
-data_dir <- "./data/"
-results_dir <- "./results/"
-# Make results directory if non-existent
-system("mkdir -p results")
+# Suppress warnings loading packages
+suppress_warning <- TRUE
+if (suppress_warning) {
+  options(warn=-1)
+  options(dplyr.summarise.inform = FALSE)
+  suppressPackageStartupMessages(library("tidyverse"))
+  suppressPackageStartupMessages(library("ggplot2"))
+  suppressPackageStartupMessages(library("patchwork"))
+  suppressPackageStartupMessages(library("maps"))
+  suppressPackageStartupMessages(library("geosphere"))
+  suppressPackageStartupMessages(library("xlsx"))
+  suppressPackageStartupMessages(library("R.matlab"))  
+}
 
 # Load additional libraries and functions
 library(tidyverse)
@@ -22,12 +39,40 @@ library(xlsx)
 library(R.matlab)
 source("herringspawn_functions.R")
 
+# Write out some setup information
+print("Analysis script: Herring spawning migration and bioenergetics 2016 year-class")
+print("Author: Erik Askov Mousing, Institute of Marine Research, 2023")
+print("")
+print("Analysis setup:")
+print(paste('Git branch:', system("git rev-parse --short HEAD", intern = TRUE)))
+print("")
+print("Software versions:")
+print(paste(R.version.string))
+print(paste('tidyverse version', packageVersion('tidyverse')))
+print(paste('ggplot2 version', packageVersion('ggplot2')))
+print(paste('patchwork version', packageVersion('patchwork')))
+print(paste('maps version', packageVersion('maps')))
+print(paste('geosphere version', packageVersion('geosphere')))
+print(paste('xlsx version', packageVersion('xlsx')))
+print(paste('R.matlab version', packageVersion('R.matlab')))
+print("")
+
+#### Setup environment and prepare simulations ####
+
+print("1/5: Reading data and setting up simulations...")
+
+# Setup directory paths
+data_dir <- "./data/"
+results_dir <- "./results/"
+# Make results directory if non-existent
+system("mkdir -p results")
+
 # Read migration route and currents data
 her_cog <- get_route_positions(data_dir)
 her_cog <- her_cog[2:13,]
 her_cur <- get_currents(data_dir, her_cog)
-her_cur$u <- her_cur$u*0.75
-her_cur$v <- her_cur$v*0.75
+her_cur$u <- her_cur$u
+her_cur$v <- her_cur$v
 
 # Total distance
 tot_dist <- 0
@@ -68,6 +113,7 @@ bio_params <- list(
 )
 
 #### Simulation ####
+print("2/5: Running the simulations...")
 
 # Simulation 1: Observed fish size in 2020
 fish_len <- 27.5 # Fish length (cm)
@@ -106,18 +152,19 @@ sim4$energy_rel <- sim4$energy_accum / fish_energy
 sim4_end <- sim4[sim4$trans == max(transects), ]
 
 # Write model output to files
-if (file_out) {
-  write.csv2(sim1, paste0(results_dir, "mod_results_observed_2020.csv"), row.names = F)
-  write.csv2(sim2, paste0(results_dir, "mod_results_observed_2021.csv"), row.names = F)
-  write.csv2(sim3, paste0(results_dir, "mod_results_observed_2022.csv"), row.names = F)
-  write.csv2(sim4, paste0(results_dir, "mod_results_observed_2023.csv"), row.names = F)  
-}
+print("3/5: Writing output to fil...")
+write.csv2(sim1, paste0(results_dir, "mod_results_observed_2020.csv"), row.names = F)
+write.csv2(sim2, paste0(results_dir, "mod_results_observed_2021.csv"), row.names = F)
+write.csv2(sim3, paste0(results_dir, "mod_results_observed_2022.csv"), row.names = F)
+write.csv2(sim4, paste0(results_dir, "mod_results_observed_2023.csv"), row.names = F)  
+
 
 # Concatenate results from observed fish sizes
 sim_obs <- rbind(sim1, sim2, sim3, sim4)
 sim_obs$energy_rel <- sim_obs$energy_rel*100 # Convert to %
 
 #### Plots ####
+print("4/5: Making plot...")
 
 # Prepare data for plotting
 world <- map_data("world")
@@ -235,7 +282,9 @@ ABCD
 ABEF
 "
 # Combine plots
-p_dist + p_cur2020 + p_wei + p_sspeed + p_cond_k + p_rel_energy + plot_layout(guides = "collect", design = my_layout) & plot_annotation(tag_levels = "a") & theme(legend.position = 'bottom', legend.title = element_blank())
-if (fig_out) {
-  ggsave(paste0(results_dir, "migration.tiff"), scale = 1.1, dpi = 300, width = 10, height = 4.5, compression = "lzw")
-}
+p_dist + p_cur2020 + p_wei + p_sspeed + p_cond_k + p_rel_energy + 
+  plot_layout(guides = "collect", design = my_layout) & 
+  plot_annotation(tag_levels = "a") & theme(legend.position = 'bottom', legend.title = element_blank())
+ggsave(paste0(results_dir, "migration.tiff"), scale = 1.1, dpi = 300, width = 10, height = 4.5, compression = "lzw")
+
+print("5/5: Analysis completed!")
