@@ -1,9 +1,16 @@
 
 
 #### Setup environment and prepare simulations ####
+
+# Define output mode
+file_out <- TRUE # Write model output to files
+fig_out <- TRUE # Write model plots
+
 # Setup directory paths
 data_dir <- "./data/"
 results_dir <- "./results/"
+# Make results directory if non-existent
+system("mkdir -p results")
 
 # Load additional libraries and functions
 library(tidyverse)
@@ -11,13 +18,16 @@ library(ggplot2)
 library(patchwork)
 library(maps)
 library(geosphere)
-require(xlsx)
+library(xlsx)
+library(R.matlab)
 source("herringspawn_functions.R")
 
 # Read migration route and currents data
 her_cog <- get_route_positions(data_dir)
 her_cog <- her_cog[2:13,]
 her_cur <- get_currents(data_dir, her_cog)
+her_cur$u <- her_cur$u*0.75
+her_cur$v <- her_cur$v*0.75
 
 # Total distance
 tot_dist <- 0
@@ -37,7 +47,7 @@ her_cur <- her_cur[her_cur$year != 1994, ]
 #### Define simulation setup ####
 temp <- 8 # Water temperature
 years <- unique(her_cur$year) # Years to simulate
-transects <- unique(her_cur$trans)
+transects <- unique(her_cur$trans) # Transects to swim
 
 # Bioenergic parameters 
 bio_params <- list(
@@ -59,108 +69,57 @@ bio_params <- list(
 
 #### Simulation ####
 
-# Simulation 1: Generic fish (k=0.9, 27 cm)
-fish_len <- 27 # Fish length (cm)
-fish_wei <- 177 # Fish weight (grams)
-fish_dwei <- fish_wei * (1 - bio_params$wc) # Fish dry weight
-fish_energy <- calc_tot_energy(fish_dwei) # Fish total energy content
-sim1r <- simulate_migration(fish_len, fish_wei, years, transects, bio_params)
-sim1r$energy_rel <- sim1r$energy_accum / fish_energy
-sim1_2020 <- sim1r[sim1r$year == 2020, ]
-sim1_2021 <- sim1r[sim1r$year == 2021, ]
-sim1_2022 <- sim1r[sim1r$year == 2022, ]
-sim1_2023 <- sim1r[sim1r$year == 2023, ]
-sim1_end <- sim1r[sim1r$trans == max(transects), ]
-
-# Simulation 2: Generic fish (k=0.9, 30 cm)
-fish_len <- 30 # Fish length (cm)
-fish_wei <- 243 # Fish weight (grams)
-fish_dwei <- fish_wei * (1 - bio_params$wc) # Fish dry weight
-fish_energy <- calc_tot_energy(fish_dwei) # Fish total energy content
-sim2r <- simulate_migration(fish_len, fish_wei, years, transects, bio_params)
-sim2r$energy_rel <- sim2r$energy_accum / fish_energy
-sim2_2020 <- sim2r[sim2r$year == 2020, ]
-sim2_2021 <- sim2r[sim2r$year == 2021, ]
-sim2_2022 <- sim2r[sim2r$year == 2022, ]
-sim2_2023 <- sim2r[sim2r$year == 2023, ]
-sim2_end <- sim2r[sim2r$trans == max(transects), ]
-
-# Simulation 3: Generic fish (k=0.9, 33 cm)
-fish_len <- 33 # Fish length (cm)
-fish_wei <- 323 # Fish weight (grams)
-fish_dwei <- fish_wei * (1 - bio_params$wc) # Fish dry weight
-fish_energy <- calc_tot_energy(fish_dwei) # Fish total energy content
-sim3r <- simulate_migration(fish_len, fish_wei, years, transects, bio_params)
-sim3r$energy_rel <- sim3r$energy_accum / fish_energy
-sim3_2020 <- sim3r[sim3r$year == 2020, ]
-sim3_2021 <- sim3r[sim3r$year == 2021, ]
-sim3_2022 <- sim3r[sim3r$year == 2022, ]
-sim3_2023 <- sim3r[sim3r$year == 2023, ]
-sim3_end <- sim3r[sim3r$trans == max(transects), ]
-
-# Simulation 4: Generic fish (k=0.9, 36 cm)
-fish_len <- 36 # Fish length (cm)
-fish_wei <- 419 # Fish weight (grams)
-fish_dwei <- fish_wei * (1 - bio_params$wc) # Fish dry weight
-fish_energy <- calc_tot_energy(fish_dwei) # Fish total energy content
-sim4r <- simulate_migration(fish_len, fish_wei, years, transects, bio_params)
-sim4r$energy_rel <- sim4r$energy_accum / fish_energy
-sim4_2020 <- sim4r[sim4r$year == 2020, ]
-sim4_2021 <- sim4r[sim4r$year == 2021, ]
-sim4_2022 <- sim4r[sim4r$year == 2022, ]
-sim4_2023 <- sim4r[sim4r$year == 2023, ]
-sim4_end <- sim4r[sim4r$trans == max(transects), ]
-
-# Simulation 5: Observed fish size in 2020
+# Simulation 1: Observed fish size in 2020
 fish_len <- 27.5 # Fish length (cm)
 fish_wei <- 168 # 180 # Fish weight (grams)
 fish_dwei <- fish_wei * (1 - bio_params$wc)
 fish_energy <- calc_tot_energy(fish_dwei) # Fish total energy content
-sim5r <- simulate_migration(fish_len, fish_wei, 2020, transects, bio_params)
-sim5r$energy_rel <- sim5r$energy_accum / fish_energy
-sim5_end <- sim5r[sim5r$trans == max(transects), ]
+sim1 <- simulate_migration(fish_len, fish_wei, 2020, transects, bio_params)
+sim1$energy_rel <- sim1$energy_accum / fish_energy
+sim1_end <- sim1[sim1$trans == max(transects), ]
 
-# Simulation 6: Observed fish size in 2021
+# Simulation 2: Observed fish size in 2021
 fish_len <- 29 # Fish length (cm)
 fish_wei <- 210 # 205 # Fish weight (grams)
 fish_dwei <- fish_wei * (1 - bio_params$wc) # Fish dry weight
 fish_energy <- calc_tot_energy(fish_dwei) # Fish total energy content
-sim6r <- simulate_migration(fish_len, fish_wei, 2021, transects, bio_params)
-sim6r$energy_rel <- sim6r$energy_accum / fish_energy
-sim6_end <- sim6r[sim6r$trans == max(transects), ]
+sim2 <- simulate_migration(fish_len, fish_wei, 2021, transects, bio_params)
+sim2$energy_rel <- sim2$energy_accum / fish_energy
+sim2_end <- sim2[sim2$trans == max(transects), ]
 
-# Simulation 7: Observed fish size in 2022
+# Simulation 3: Observed fish size in 2022
 fish_len <- 30 # Fish length (cm)
 fish_wei <- 242 # Fish weight (grams)
 fish_dwei <- fish_wei * (1 - bio_params$wc) # Fish dry weight
 fish_energy <- calc_tot_energy(fish_dwei) # Fish total energy content
-sim7r <- simulate_migration(fish_len, fish_wei, 2022, transects, bio_params)
-sim7r$energy_rel <- sim7r$energy_accum / fish_energy
-sim7_end <- sim7r[sim7r$trans == max(transects), ]
+sim3 <- simulate_migration(fish_len, fish_wei, 2022, transects, bio_params)
+sim3$energy_rel <- sim3$energy_accum / fish_energy
+sim3_end <- sim3[sim3$trans == max(transects), ]
 
-# Simulation 8: Observed fish size in 2023
+# Simulation 4: Observed fish size in 2023
 fish_len <- 31.5 # Fish length (cm)
 fish_wei <- 284 # Fish weight (grams)
 fish_dwei <- fish_wei * (1 - bio_params$wc) # Fish dry weight
 fish_energy <- calc_tot_energy(fish_dwei) # Fish total energy content
-sim8r <- simulate_migration(fish_len, fish_wei, 2023, transects, bio_params)
-sim8r$energy_rel <- sim8r$energy_accum / fish_energy
-sim8_end <- sim8r[sim8r$trans == max(transects), ]
+sim4 <- simulate_migration(fish_len, fish_wei, 2023, transects, bio_params)
+sim4$energy_rel <- sim4$energy_accum / fish_energy
+sim4_end <- sim4[sim4$trans == max(transects), ]
+
+# Write model output to files
+if (file_out) {
+  write.csv2(sim1, paste0(results_dir, "mod_results_observed_2020.csv"), row.names = F)
+  write.csv2(sim2, paste0(results_dir, "mod_results_observed_2021.csv"), row.names = F)
+  write.csv2(sim3, paste0(results_dir, "mod_results_observed_2022.csv"), row.names = F)
+  write.csv2(sim4, paste0(results_dir, "mod_results_observed_2023.csv"), row.names = F)  
+}
 
 # Concatenate results from observed fish sizes
-sim_obs_end <- rbind(sim5_end, sim6_end, sim7_end, sim8_end)
-
-# Concatenate results from all simulations
-sim1_end$sim <- "sim1"
-sim2_end$sim <- "sim2"
-sim3_end$sim <- "sim3" 
-sim4_end$sim <- "sim4"
-sim_obs_end$sim <- "sim999"
-
-sims <- bind_rows(sim1_end, sim2_end, sim3_end, sim4_end)
-
+sim_obs <- rbind(sim1, sim2, sim3, sim4)
+sim_obs$energy_rel <- sim_obs$energy_rel*100 # Convert to %
 
 #### Plots ####
+
+# Prepare data for plotting
 world <- map_data("world")
 
 # Read spawning location data
@@ -171,223 +130,33 @@ her_df$lon <- as.numeric(her_df$lon)
 her_df$lat <- as.numeric(her_df$lat)
 her_df$NASC <- as.numeric(her_df$NASC)
 
-# Calculate the maximum number of transects before the K threshold
-dist1_2020 <- round(get_k_trans(sim1_2020, 0.65), 0)
-dist2_2020 <- round(get_k_trans(sim2_2020, 0.65), 0)
-dist3_2020 <- round(get_k_trans(sim3_2020, 0.65), 0)
-dist4_2020 <- round(get_k_trans(sim4_2020, 0.65), 0)
-dist5_2020 <- round(get_k_trans(sim5r, 0.65), 0)
-dist1_2021 <- round(get_k_trans(sim1_2021, 0.65), 0)
-dist2_2021 <- round(get_k_trans(sim2_2021, 0.65), 0)
-dist3_2021 <- round(get_k_trans(sim3_2021, 0.65), 0)
-dist4_2021 <- round(get_k_trans(sim4_2021, 0.65), 0)
-dist5_2021 <- round(get_k_trans(sim6r, 0.65), 0)
-dist1_2022 <- round(get_k_trans(sim1_2022, 0.65), 0)
-dist2_2022 <- round(get_k_trans(sim2_2022, 0.65), 0)
-dist3_2022 <- round(get_k_trans(sim3_2022, 0.65), 0)
-dist4_2022 <- round(get_k_trans(sim4_2022, 0.65), 0)
-dist5_2022 <- round(get_k_trans(sim7r, 0.65), 0)
-dist1_2023 <- round(get_k_trans(sim1_2023, 0.65), 0)
-dist2_2023 <- round(get_k_trans(sim2_2023, 0.65), 0)
-dist3_2023 <- round(get_k_trans(sim3_2023, 0.65), 0)
-dist4_2023 <- round(get_k_trans(sim4_2023, 0.65), 0)
-dist5_2023 <- round(get_k_trans(sim8r, 0.65), 0)
-
-# Create data frames for plotting
-dist_2020 <- data.frame(
-  len = c("27 cm", "30 cm", "33 cm", "36 cm", "2016 year-class"),
-  lon = c(her_cog$lon[dist1_2020+1], her_cog$lon[dist2_2020+1]-0.3, her_cog$lon[dist3_2020+1]+0.3, her_cog$lon[dist4_2020+1], her_cog$lon[dist5_2020+1]),
-  lat = c(her_cog$lat[dist1_2020+1], her_cog$lat[dist2_2020+1], her_cog$lat[dist3_2020+1], her_cog$lat[dist4_2020+1], her_cog$lat[dist5_2020+1])
-)
-
-dist_2021 <- data.frame(
-  len = c("27 cm", "30 cm", "33 cm", "36 cm", "2016 year-class"),
-  lon = c(her_cog$lon[dist1_2021+1], her_cog$lon[dist2_2021+1]-0.3, her_cog$lon[dist3_2021+1]+0.3, her_cog$lon[dist4_2021+1], her_cog$lon[dist5_2021+1]),
-  lat = c(her_cog$lat[dist1_2021+1], her_cog$lat[dist2_2021+1], her_cog$lat[dist3_2021+1], her_cog$lat[dist4_2021+1], her_cog$lat[dist5_2021+1])
-)
-
-dist_2022 <- data.frame(
-  len = c("27 cm", "30 cm", "33 cm", "36 cm", "2016 year-class"),
-  lon = c(her_cog$lon[dist1_2022+1], her_cog$lon[dist2_2022+1]-0.3, her_cog$lon[dist3_2022+1]-0.3, her_cog$lon[dist4_2022+1]+0.3, her_cog$lon[dist5_2022+1]+0.3),
-  lat = c(her_cog$lat[dist1_2022+1], her_cog$lat[dist2_2022+1], her_cog$lat[dist3_2022+1], her_cog$lat[dist4_2022+1], her_cog$lat[dist5_2022+1])
-)
-
-dist_2023 <- data.frame(
-  len = c("27 cm", "30 cm", "33 cm", "36 cm", "2016 year-class"),
-  lon = c(her_cog$lon[dist1_2023+1], her_cog$lon[dist2_2023+1], her_cog$lon[dist3_2023+1]-0.3, her_cog$lon[dist4_2023+1], her_cog$lon[dist5_2023+1]+0.3),
-  lat = c(her_cog$lat[dist1_2023+1], her_cog$lat[dist2_2023+1], her_cog$lat[dist3_2023+1], her_cog$lat[dist4_2023+1], her_cog$lat[dist5_2023+1])
-)
-
-# Create maps
-
-custom_theme <- theme(axis.text.x=element_blank(), #remove x axis labels
-                      axis.ticks.x=element_blank(), #remove x axis ticks
-                      axis.text.y=element_blank(),  #remove y axis labels
-                      axis.ticks.y=element_blank(),  #remove y axis ticks
-                      axis.title.x=element_blank(), 
-                      axis.title.y=element_blank()
-)
-
-p0_2020 <- ggplot() +
-  geom_map(data = world, map = world, aes(long, lat, map_id=region), fill = "grey", color="darkgrey") +
-  geom_point(data = her_df, aes(x = lon, y = lat), col = "lightblue", alpha = 0.1) +
-  geom_segment(
-    aes(x = her_cog$lon[1:14], 
-        y = her_cog$lat[1:14],
-        xend = her_cog$lon[2:15],
-        yend = her_cog$lat[2:15]),
-    arrow = arrow(length=unit(.3, 'cm'), type = "open"),
-    color = "darkblue") +
-  geom_point(aes(x = lon, y = lat), her_cog, color = "darkblue") +
-  geom_point(aes(x = lon, y = lat), dist_2020, color = c(2,3,4,5,1), shape = 16, size = 3) +
-  scale_y_continuous(limits = c(61,71), expand = c(0, 0)) +
-  scale_x_continuous(limits = c(4,18), expand = c(0, 0)) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  theme_bw()
-# p0_2020
-
-p0_2021 <- ggplot() +
-  geom_map(data = world, map = world, aes(long, lat, map_id=region), fill = "grey", color="darkgrey") +
-  geom_point(data = her_df, aes(x = lon, y = lat), col = "lightblue", alpha = 0.1) +
-  geom_segment(
-    aes(x = her_cog$lon[1:14], 
-        y = her_cog$lat[1:14],
-        xend = her_cog$lon[2:15],
-        yend = her_cog$lat[2:15]),
-    arrow = arrow(length=unit(.3, 'cm'), type = "open"),
-    color = "darkblue") +
-  geom_point(aes(x = lon, y = lat), her_cog, color = "darkblue") +
-  geom_point(aes(x = lon, y = lat), dist_2021, color = c(2,3,4,5,1), shape = 16, size = 3) +
-  scale_y_continuous(limits = c(61,71), expand = c(0, 0)) +
-  scale_x_continuous(limits = c(4,18), expand = c(0, 0)) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  theme_bw()
-# p0_2021
-
-p0_2022 <- ggplot() +
-  geom_map(data = world, map = world, aes(long, lat, map_id=region), fill = "grey", color="darkgrey") +
-  geom_point(data = her_df, aes(x = lon, y = lat), col = "lightblue", alpha = 0.1) +
-  geom_segment(
-    aes(x = her_cog$lon[1:14], 
-        y = her_cog$lat[1:14],
-        xend = her_cog$lon[2:15],
-        yend = her_cog$lat[2:15]),
-    arrow = arrow(length=unit(.3, 'cm'), type = "open"),
-    color = "darkblue") +
-  geom_point(aes(x = lon, y = lat), her_cog, color = "darkblue") +
-  geom_point(aes(x = lon, y = lat), dist_2022, color = c(2,3,4,5,1), shape = 16, size = 3) +
-  scale_y_continuous(limits = c(61,71), expand = c(0, 0)) +
-  scale_x_continuous(limits = c(4,18), expand = c(0, 0)) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  theme_bw()
-# p0_2022
-
-p0_2023 <- ggplot() +
-  geom_map(data = world, map = world, aes(long, lat, map_id=region), fill = "grey", color="darkgrey") +
-  geom_point(data = her_df, aes(x = lon, y = lat), col = "lightblue", alpha = 0.1) +
-  geom_segment(
-    aes(x = her_cog$lon[1:14], 
-        y = her_cog$lat[1:14],
-        xend = her_cog$lon[2:15],
-        yend = her_cog$lat[2:15]),
-    arrow = arrow(length=unit(.3, 'cm'), type = "open"),
-    color = "darkblue") +
-  geom_point(aes(x = lon, y = lat), her_cog, color = "darkblue") +
-  geom_point(aes(x = lon, y = lat), dist_2023, color = c(2,3,4,5,1), shape = 16, size = 3) +
-  scale_y_continuous(limits = c(61,71), expand = c(0, 0)) +
-  scale_x_continuous(limits = c(4,18), expand = c(0, 0)) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  theme_bw()
-# p0_2023
-
-# Calculate v anomaly
-current <- data.frame(
-  year = years,
-  v_mean = tapply(her_cur$v, her_cur$year, median)
-)
-current$v_anom <- current$v_mean - mean(her_cur$v)
-
-p0 <- ggplot(current, aes(x = year, y = v_anom)) +
-  geom_line(col = "darkgreen") +
-  geom_point(size = 2, col = "darkgreen") +
-  # geom_hline(yintercept = 0, linetype="dashed") +
-  xlab("Year") +
-  ylab("Mean northwards current speed (m/s)") +
-  theme_bw()
-p0
-
-p1 <- ggplot(sims, aes(x = year)) +
-  geom_line(aes(y = sdist_accum, col = sim)) +
-  geom_point(aes(y = sdist_accum, col = sim), sim_obs_end, size = 2) +
-  scale_color_manual(
-    name = "", 
-    labels = c("27 cm", "30 cm", "33 cm", "36 cm", "2016 year-class"),
-    values = c(2,3,4,5,1)) +
-  xlab("Year") +
-  ylab("Actual swimming distance (km)") +
-  theme_bw()
-p1
-
-p2 <- ggplot(sims, aes(x = year)) +
-  geom_line(aes(y = energy_rel, col = sim)) +
-  geom_point(aes(y = energy_rel, col = sim), sim_obs_end, size = 2) +
-  scale_color_manual(
-    name = "", 
-    labels = c("27 cm", "30 cm", "33 cm", "36 cm", "2016 year-class"),
-    values = c(2,3,4,5,1)) +
-  xlab("Year") +
-  ylab("Energy loss (%)") +
-  theme_bw()
-p2
-
-p3 <- ggplot(sims, aes(x = year)) +
-  geom_line(aes(y = cond_k, col = sim)) +
-  geom_point(aes(y = cond_k, col = sim), sim_obs_end, size = 2) +
-  scale_color_manual(
-    name = "", 
-    labels = c("27 cm", "30 cm", "33 cm", "36 cm", "2016 year-class"),
-    values = c(2,3,4,5,1)) +
-  xlab("Year") +
-  ylab("CF after spawning") +
-  theme_bw()
-p3
-
-# Combine plots
-p0_2020 + p0_2021 + p0_2022 + p0_2023 + p1 + p2 + p3 + guide_area() + plot_layout(guides = "collect", ncol = 4) & plot_annotation(tag_levels = "a")
-ggsave("migration.tiff", scale = 1.1, dpi = 300, width = 9.5, height = 6, compression = "lzw")
-
-# write.csv2(sim5r, "mod_results_observed_2020.csv", row.names = F)
-# write.csv2(sim6r, "mod_results_observed_2021.csv", row.names = F)
-# write.csv2(sim7r, "mod_results_observed_2022.csv", row.names = F)
-# write.csv2(sim8r, "mod_results_observed_2023.csv", row.names = F)
-
-dist_obs <- data.frame(
-  year = c("2020", "2021", "2022", "2023"),
-  lon = c(her_cog$lon[dist5_2020+1], her_cog$lon[dist5_2021+1], her_cog$lon[dist5_2022+1], her_cog$lon[dist5_2023+1]),
-  lat = c(her_cog$lat[dist5_2020+1], her_cog$lat[dist5_2021+1], her_cog$lat[dist5_2022+1], her_cog$lat[dist5_2023+1])
-)
-
 # Read currents data for 2020
-require(R.matlab)
-
-# Read data from file
 jan_feb <- readMat(paste0(data_dir, "currents1993_2023jan_feb.mat"))
+yr_index <- which(jan_feb$year == 2020)
 uv_2020 <- data.frame(
   lon = as.vector(jan_feb$xlon),
   lat = as.vector(jan_feb$ylat),
-  u = as.vector(jan_feb$ueast[,,30]),
-  v = as.vector(jan_feb$vnorth[,,30])
+  u = as.vector(jan_feb$ueast[,,yr_index]),
+  v = as.vector(jan_feb$vnorth[,,yr_index])
 )
-uv_2020$w <- sqrt(uv_2020$v^2 + uv_2020$u^2)
-plot(uv_2020$w)
+uv_2020$w <- sqrt(uv_2020$u^2 + uv_2020$v^2)
 
+# Calculate the maximum number of transects before the K threshold
+k1 <- round(get_k_trans(sim1, 0.65), 0)
+k2 <- round(get_k_trans(sim2, 0.65), 0)
+k3 <- round(get_k_trans(sim3, 0.65), 0)
+k4 <- round(get_k_trans(sim4, 0.65), 0)
 
-head(uv_2020)
+# Create data frames for plotting transects swimmed before the K threshold
+dist_obs <- data.frame(
+  year = c("2020", "2021", "2022", "2023"),
+  lon = c(her_cog$lon[k1+1], her_cog$lon[k2+1], her_cog$lon[k3+1], her_cog$lon[k4+1]),
+  lat = c(her_cog$lat[k1+1], her_cog$lat[k2+1], her_cog$lat[k3+1], her_cog$lat[k4+1])
+)
 
+# Create plots
+
+# Map
 p_dist <- ggplot() +
   geom_map(data = world, map = world, aes(long, lat, map_id=region), fill = "lightgreen", color="darkgreen") +
   geom_point(data = her_df, aes(x = lon, y = lat), col = "wheat", alpha = 0.1) +
@@ -401,40 +170,29 @@ p_dist <- ggplot() +
   geom_point(aes(x = lon, y = lat), her_cog, color = "darkblue") +
   geom_point(aes(x = lon, y = lat, col = as.factor(year)), dist_obs, shape = 16, size = 4, show.legend = FALSE) +
   geom_point(aes(x = lon, y = lat), dist_obs, shape = 21, size = 4, show.legend = FALSE) +
-  geom_text(aes(x = lon, y = lat, label = as.factor(year)), dist_obs, hjust = 1.5, size = 4) +
+  geom_text(aes(x = lon, y = lat, label = as.factor(year)), dist_obs, hjust = 1.5, size = 3) +
   scale_y_continuous(limits = c(62,71), expand = c(0, 0)) +
   scale_x_continuous(limits = c(4,18), expand = c(0, 0)) +
   xlab("Longitude") +
   ylab("Latitude") +
   theme_bw() +
   theme(axis.title.x=element_blank(), axis.title.y=element_blank())
-p_dist
 
+# Currents
 p_cur2020 <- ggplot() +
   geom_map(data = world, map = world, aes(long, lat, map_id=region), fill = "lightgreen", color="darkgreen") +
   geom_segment(data = uv_2020, aes(x = lon, xend = lon + u, y = lat, yend = lat + v, colour = w), 
                arrow = arrow(angle = 15, length = unit(0.03, "inches"), type = "closed"), alpha = 0.3, show.legend = F) +
   scale_color_gradient(low = "black", high = "red") +
-  geom_segment(
-    aes(x = her_cog$lon[1:14], 
-        y = her_cog$lat[1:14],
-        xend = her_cog$lon[2:15],
-        yend = her_cog$lat[2:15]),
-    arrow = arrow(length=unit(.3, 'cm'), type = "open"),
-    color = "darkblue") +
-  geom_point(aes(x = lon, y = lat), her_cog, color = "darkblue") +
   scale_y_continuous(limits = c(62,71), expand = c(0, 0)) +
   scale_x_continuous(limits = c(4,18), expand = c(0, 0)) +
   xlab("Longitude") +
   ylab("Latitude") +
   theme_bw() +
-  theme(axis.title.x=element_blank(), axis.title.y=element_blank())
+  theme(axis.title.x=element_blank(), axis.title.y=element_blank(),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
-p_cur2020
-
-sim_obs <- rbind(sim5r, sim6r, sim7r, sim8r)
-sim_obs$energy_rel <- sim_obs$energy_rel*100
-
+# Condition after spawning
 p_cond_k <- ggplot(sim_obs, aes(x = trans)) +
   geom_hline(yintercept = 0.65, linetype="dashed") +
   scale_x_continuous(breaks=c(1:11), labels=c(1:11),limits=c(1,11)) +
@@ -444,6 +202,7 @@ p_cond_k <- ggplot(sim_obs, aes(x = trans)) +
   theme_bw() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
+# Swimming speed
 p_sspeed <- ggplot(sim_obs, aes(x = trans)) +
   geom_line(aes(y = sspeed, col = as.factor(year)), show.legend = F) +
   scale_x_continuous(breaks=c(1:11), labels=c(1:11),limits=c(1,11)) +
@@ -452,7 +211,7 @@ p_sspeed <- ggplot(sim_obs, aes(x = trans)) +
   theme_bw() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
-
+# Weight
 p_wei <- ggplot(sim_obs, aes(x = trans)) +
   geom_line(aes(y = wei, col = as.factor(year)), show.legend = F) +
   scale_x_continuous(breaks=c(1:11), labels=c(1:11),limits=c(1,11)) +
@@ -461,6 +220,7 @@ p_wei <- ggplot(sim_obs, aes(x = trans)) +
   theme_bw() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
+# Energy used
 p_rel_energy <- ggplot(sim_obs, aes(x =trans)) +
   geom_line(aes(y = energy_rel, col = as.factor(year)), show.legend = F) +
   scale_x_continuous(breaks=c(1:11), labels=c(1:11),limits=c(1,11)) +
@@ -469,10 +229,13 @@ p_rel_energy <- ggplot(sim_obs, aes(x =trans)) +
   theme_bw() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
-
+# Create custom layout
 my_layout <- "
 ABCD
 ABEF
 "
-
+# Combine plots
 p_dist + p_cur2020 + p_wei + p_sspeed + p_cond_k + p_rel_energy + plot_layout(guides = "collect", design = my_layout) & plot_annotation(tag_levels = "a") & theme(legend.position = 'bottom', legend.title = element_blank())
+if (fig_out) {
+  ggsave(paste0(results_dir, "migration.tiff"), scale = 1.1, dpi = 300, width = 10, height = 4.5, compression = "lzw")
+}
