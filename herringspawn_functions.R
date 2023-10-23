@@ -15,6 +15,28 @@ calc_tot_energy <- function(dwei, params) {
   return(tot_energy)
 }
 
+estimate_loc <- function(positions, k) {
+  k <- as.numeric(k)
+  i <- as.integer(k)
+  s <- k%%1
+  
+  if (i+2 > dim(positions)[1]) {
+    lon <- positions$lon[i+1]
+    lat <- positions$lat[i+1]
+  } else {
+    # Get points
+    x0 <- positions$lon[i+1]
+    y0 <- positions$lat[i+1]
+    x1 <- positions$lon[i+2]
+    y1 <- positions$lat[i+2]
+    
+    # Interpolate new position
+    lon <- ((1 - s)*x0 + s*x1)
+    lat <- ((1 - s)*y0 + s*y1)  
+  }
+  return(c(lon, lat))
+}
+
 get_route_positions <- function(data_dir) {
   require(xlsx)
   

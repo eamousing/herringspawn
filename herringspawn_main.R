@@ -71,8 +71,12 @@ system("mkdir -p results")
 her_cog <- get_route_positions(data_dir)
 her_cog <- her_cog[2:13,]
 her_cur <- get_currents(data_dir, her_cog)
-her_cur$u <- her_cur$u
-her_cur$v <- her_cur$v
+
+print(her_cog)
+
+# Reduce by 25% to account for deeper position of fish
+her_cur$u <- her_cur$u*0.75
+her_cur$v <- her_cur$v*0.75
 
 # Total distance
 tot_dist <- 0
@@ -159,6 +163,7 @@ write.csv2(sim3, paste0(results_dir, "mod_results_observed_2022.csv"), row.names
 write.csv2(sim4, paste0(results_dir, "mod_results_observed_2023.csv"), row.names = F)  
 
 
+
 # Concatenate results from observed fish sizes
 sim_obs <- rbind(sim1, sim2, sim3, sim4)
 sim_obs$energy_rel <- sim_obs$energy_rel*100 # Convert to %
@@ -189,16 +194,24 @@ uv_2020 <- data.frame(
 uv_2020$w <- sqrt(uv_2020$u^2 + uv_2020$v^2)
 
 # Calculate the maximum number of transects before the K threshold
-k1 <- round(get_k_trans(sim1, 0.65), 0)
-k2 <- round(get_k_trans(sim2, 0.65), 0)
-k3 <- round(get_k_trans(sim3, 0.65), 0)
-k4 <- round(get_k_trans(sim4, 0.65), 0)
+k1 <- round(get_k_trans(sim1, 0.65), 2)
+k2 <- round(get_k_trans(sim2, 0.65), 2)
+k3 <- round(get_k_trans(sim3, 0.65), 2)
+k4 <- round(get_k_trans(sim4, 0.65), 2)
+
+# Estimate position along transect
+loc1 <- estimate_loc(her_cog, k1)
+loc2 <- estimate_loc(her_cog, k2)
+loc3 <- estimate_loc(her_cog, k3)
+loc4 <- estimate_loc(her_cog, k4)
+
+
 
 # Create data frames for plotting transects swimmed before the K threshold
 dist_obs <- data.frame(
   year = c("2020", "2021", "2022", "2023"),
-  lon = c(her_cog$lon[k1+1], her_cog$lon[k2+1], her_cog$lon[k3+1], her_cog$lon[k4+1]),
-  lat = c(her_cog$lat[k1+1], her_cog$lat[k2+1], her_cog$lat[k3+1], her_cog$lat[k4+1])
+  lon = c(loc1[1], loc2[1], loc3[1], loc4[1]),
+  lat = c(loc1[2], loc2[2], loc3[2], loc4[2])
 )
 
 # Create plots
