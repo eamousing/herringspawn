@@ -295,7 +295,7 @@ ABCD
 ABEF
 "
 # Combine plots
-p_dist + p_cur2020 + p_wei + p_sspeed + p_cond_k + p_rel_energy + 
+p_dist + p_cur2020 + p_wei + p_rel_energy + p_cond_k + p_sspeed + 
   plot_layout(guides = "collect", design = my_layout) & 
   plot_annotation(tag_levels = "a") & theme(legend.position = 'bottom', legend.title = element_blank())
 ggsave(paste0(results_dir, "migration.tiff"), scale = 1.1, dpi = 300, width = 10, height = 4.5, compression = "lzw")
